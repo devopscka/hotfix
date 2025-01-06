@@ -1,0 +1,36 @@
+name: Automatic Version Tagging
+
+on:
+  push:
+    branches:
+      - 'main'
+      - 'hotfix/*'
+
+jobs:
+  version_tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install semver
+        run: npm install -g semver
+
+      - name: Process Version
+        id: version
+        run: node .github/scripts/process-version.js
+        env:
+          BRANCH_NAME: ${{ github.ref_name }}
+
+      - name: Create Tag
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git tag -a ${{ steps.version.outputs.new_version }} -m "Release ${{ steps.version.outputs.new_version }}"
+          git push origin ${{ steps.version.outputs.new_version }}
