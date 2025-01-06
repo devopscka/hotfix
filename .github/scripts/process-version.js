@@ -2,24 +2,32 @@ const { execSync } = require('child_process');
 
 function getLatestVersionTag(branch) {
   try {
-    // If it's a hotfix branch, extract the base version
-    let baseVersion = '';
+    // For hotfix branches, extract the base version from branch name
+    // Example: hotfix/v1.1.0 -> 1.1.0
     if (branch.startsWith('hotfix/')) {
-      baseVersion = branch.split('hotfix/v')[1];
+      const baseVersion = branch.split('hotfix/v')[1];
+      if (!baseVersion) {
+        throw new Error('Invalid hotfix branch name format. Expected: hotfix/v{major}.{minor}.{patch}');
+      }
+
+      // Get all tags that match this specific base version
+      const tags = execSync('git tag --sort=-v:refname', { encoding: 'utf-8' })
+        .split('\n')
+        .filter(tag => tag.match(/^v\d+\.\d+\.\d+$/))
+        .filter(tag => {
+          const tagVersion = tag.substring(1); // Remove 'v' prefix
+          return tagVersion.startsWith(baseVersion);
+        });
+
+      // If no tags exist for this base version, use the base version itself
+      return tags.length > 0 ? tags[0] : `v${baseVersion}`;
     }
 
-    // Get all tags that match the pattern
+    // For main branch, get the latest tag
     const tags = execSync('git tag --sort=-v:refname', { encoding: 'utf-8' })
       .split('\n')
       .filter(tag => tag.match(/^v\d+\.\d+\.\d+$/));
 
-    if (baseVersion) {
-      // For hotfix, find tags matching the base version
-      const relevantTags = tags.filter(tag => tag.startsWith(`v${baseVersion}`));
-      return relevantTags.length > 0 ? relevantTags[0] : `v${baseVersion}.0`;
-    }
-
-    // For main branch, return the latest tag
     return tags.length > 0 ? tags[0] : 'v1.0.0';
   } catch (error) {
     console.error('Error getting latest version:', error);
@@ -35,6 +43,7 @@ function incrementVersion(currentVersion, branch) {
     return `v${major}.${minor + 1}.0`;
   }
 
+  // For hotfix branches, increment patch version
   return `v${major}.${minor}.${patch + 1}`;
 }
 
