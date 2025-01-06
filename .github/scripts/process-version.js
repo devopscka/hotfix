@@ -1,12 +1,19 @@
 const { execSync } = require('child_process');
 
 function getHotfixBaseVersion(branch) {
-  // Extract version from hotfix/v1.3.0 format
-  const match = branch.match(/hotfix\/v(\d+\.\d+\.\d+)/);
-  if (!match) {
-    throw new Error(`Invalid hotfix branch name format: ${branch}. Expected: hotfix/v{major}.{minor}.{patch}`);
+  try {
+    // Get the commit where the branch was created
+    const branchBase = execSync(`git merge-base origin/main ${branch}`, { encoding: 'utf-8' }).trim();
+    
+    // Get the latest tag that is reachable from this commit
+    const baseTag = execSync(`git describe --tags --abbrev=0 ${branchBase}`, { encoding: 'utf-8' }).trim();
+    
+    console.log(`Branch ${branch} was created from tag: ${baseTag}`);
+    return baseTag.substring(1); // Remove 'v' prefix
+  } catch (error) {
+    console.error('Error determining hotfix base version:', error);
+    throw new Error(`Could not determine base version for hotfix branch: ${branch}`);
   }
-  return match[1];
 }
 
 function getLatestVersionTag(branch) {
