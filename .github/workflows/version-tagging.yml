@@ -6,6 +6,10 @@ on:
       - 'main'
       - 'hotfix/*'
 
+permissions:
+  contents: write
+
+
 jobs:
   version_tag:
     runs-on: ubuntu-latest
